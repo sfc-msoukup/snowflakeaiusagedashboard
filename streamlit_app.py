@@ -158,7 +158,7 @@ with st.sidebar:
     st.markdown("---")
     date_range = st.selectbox(
         "Time Period",
-        ["Last 7 Days", "Last 30 Days", "Last 90 Days", "Last 180 Days", "Last Year"],
+        ["Last 7 Days", "Last 30 Days", "Last 90 Days", "Last 180 Days", "Last Year", "Custom"],
         index=1,
     )
     days_map = {
@@ -168,8 +168,17 @@ with st.sidebar:
         "Last 180 Days": 180,
         "Last Year": 365,
     }
-    days = days_map[date_range]
-    date_filter = f"DATEADD(DAY, -{days}, CURRENT_DATE())"
+    if date_range == "Custom":
+        from datetime import date, timedelta
+        default_start = date.today() - timedelta(days=30)
+        custom_start = st.date_input("From", value=default_start)
+        custom_end = st.date_input("To", value=date.today())
+        date_filter = f"'{custom_start.strftime('%Y-%m-%d')}'"
+        date_filter_end = f"'{custom_end.strftime('%Y-%m-%d')}'"
+    else:
+        days = days_map[date_range]
+        date_filter = f"DATEADD(DAY, -{days}, CURRENT_DATE())"
+        date_filter_end = "CURRENT_DATE()"
 
     st.markdown("---")
     st.caption("Data from SNOWFLAKE.ACCOUNT_USAGE")
@@ -180,39 +189,39 @@ st.title(":snowflake: Snowflake AI Usage Dashboards")
 overview_sql = f"""
 SELECT 'Cortex LLM Functions' AS SERVICE, ROUND(SUM(TOKEN_CREDITS), 4) AS CREDITS
 FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_FUNCTIONS_USAGE_HISTORY
-WHERE START_TIME >= {date_filter}
+WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
 UNION ALL
 SELECT 'AI SQL Functions', ROUND(SUM(TOKEN_CREDITS), 4)
 FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_AISQL_USAGE_HISTORY
-WHERE USAGE_TIME >= {date_filter}
+WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end}
 UNION ALL
 SELECT 'Cortex Analyst', ROUND(SUM(CREDITS), 4)
 FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_ANALYST_USAGE_HISTORY
-WHERE START_TIME >= {date_filter}
+WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
 UNION ALL
 SELECT 'Cortex Search', ROUND(SUM(CREDITS), 4)
 FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_SEARCH_DAILY_USAGE_HISTORY
-WHERE USAGE_DATE >= {date_filter}
+WHERE USAGE_DATE >= {date_filter} AND USAGE_DATE <= {date_filter_end}
 UNION ALL
 SELECT 'Cortex Search (Serving)', ROUND(SUM(CREDITS), 4)
 FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_SEARCH_SERVING_USAGE_HISTORY
-WHERE START_TIME >= {date_filter}
+WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
 UNION ALL
 SELECT 'Cortex Code', ROUND(SUM(TOKEN_CREDITS), 4)
 FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_CODE_CLI_USAGE_HISTORY
-WHERE USAGE_TIME >= {date_filter}
+WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end}
 UNION ALL
 SELECT 'Cortex Agent', ROUND(SUM(TOKEN_CREDITS), 4)
 FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_AGENT_USAGE_HISTORY
-WHERE START_TIME >= {date_filter}
+WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
 UNION ALL
 SELECT 'Snowflake Intelligence', ROUND(SUM(TOKEN_CREDITS), 4)
 FROM SNOWFLAKE.ACCOUNT_USAGE.SNOWFLAKE_INTELLIGENCE_USAGE_HISTORY
-WHERE START_TIME >= {date_filter}
+WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
 UNION ALL
 SELECT 'Document AI', ROUND(SUM(CREDITS_USED), 4)
 FROM SNOWFLAKE.ACCOUNT_USAGE.DOCUMENT_AI_USAGE_HISTORY
-WHERE START_TIME >= {date_filter}
+WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
 """
 
 tabs = st.tabs([
@@ -274,35 +283,35 @@ with tabs[0]:
         daily_trend_sql = f"""
         SELECT DATE(START_TIME) AS USAGE_DATE, 'Cortex LLM Functions' AS SERVICE, ROUND(SUM(TOKEN_CREDITS), 4) AS CREDITS
         FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_FUNCTIONS_USAGE_HISTORY
-        WHERE START_TIME >= {date_filter} GROUP BY 1
+        WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end} GROUP BY 1
         UNION ALL
         SELECT DATE(USAGE_TIME), 'AI SQL Functions', ROUND(SUM(TOKEN_CREDITS), 4)
         FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_AISQL_USAGE_HISTORY
-        WHERE USAGE_TIME >= {date_filter} GROUP BY 1
+        WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end} GROUP BY 1
         UNION ALL
         SELECT DATE(START_TIME), 'Cortex Analyst', ROUND(SUM(CREDITS), 4)
         FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_ANALYST_USAGE_HISTORY
-        WHERE START_TIME >= {date_filter} GROUP BY 1
+        WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end} GROUP BY 1
         UNION ALL
         SELECT USAGE_DATE, 'Cortex Search', ROUND(SUM(CREDITS), 4)
         FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_SEARCH_DAILY_USAGE_HISTORY
-        WHERE USAGE_DATE >= {date_filter} GROUP BY 1
+        WHERE USAGE_DATE >= {date_filter} AND USAGE_DATE <= {date_filter_end} GROUP BY 1
         UNION ALL
         SELECT DATE(USAGE_TIME), 'Cortex Code', ROUND(SUM(TOKEN_CREDITS), 4)
         FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_CODE_CLI_USAGE_HISTORY
-        WHERE USAGE_TIME >= {date_filter} GROUP BY 1
+        WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end} GROUP BY 1
         UNION ALL
         SELECT DATE(START_TIME), 'Cortex Agent', ROUND(SUM(TOKEN_CREDITS), 4)
         FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_AGENT_USAGE_HISTORY
-        WHERE START_TIME >= {date_filter} GROUP BY 1
+        WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end} GROUP BY 1
         UNION ALL
         SELECT DATE(START_TIME), 'Snowflake Intelligence', ROUND(SUM(TOKEN_CREDITS), 4)
         FROM SNOWFLAKE.ACCOUNT_USAGE.SNOWFLAKE_INTELLIGENCE_USAGE_HISTORY
-        WHERE START_TIME >= {date_filter} GROUP BY 1
+        WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end} GROUP BY 1
         UNION ALL
         SELECT DATE(START_TIME), 'Document AI', ROUND(SUM(CREDITS_USED), 4)
         FROM SNOWFLAKE.ACCOUNT_USAGE.DOCUMENT_AI_USAGE_HISTORY
-        WHERE START_TIME >= {date_filter} GROUP BY 1
+        WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end} GROUP BY 1
         ORDER BY USAGE_DATE
         """
         st.subheader("Daily AI Credit Usage (All Services)")
@@ -331,7 +340,7 @@ with tabs[1]:
         SUM(TOKENS) AS TOTAL_TOKENS,
         COUNT(*) AS USAGE_HOURS
     FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_FUNCTIONS_USAGE_HISTORY
-    WHERE START_TIME >= {date_filter}
+    WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
     GROUP BY FUNCTION_NAME, MODEL_NAME
     ORDER BY CREDITS DESC
     """
@@ -370,7 +379,7 @@ with tabs[1]:
         llm_daily_sql = f"""
         SELECT DATE(START_TIME) AS USAGE_DATE, MODEL_NAME, ROUND(SUM(TOKEN_CREDITS), 4) AS CREDITS
         FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_FUNCTIONS_USAGE_HISTORY
-        WHERE START_TIME >= {date_filter}
+        WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
         GROUP BY 1, 2 ORDER BY 1
         """
         st.subheader("Daily Trend by Model")
@@ -399,7 +408,7 @@ with tabs[2]:
         SUM(TOKENS) AS TOTAL_TOKENS,
         COUNT(DISTINCT QUERY_ID) AS QUERY_COUNT
     FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_AISQL_USAGE_HISTORY
-    WHERE USAGE_TIME >= {date_filter}
+    WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end}
     GROUP BY FUNCTION_NAME, MODEL_NAME
     ORDER BY CREDITS DESC
     """
@@ -438,7 +447,7 @@ with tabs[2]:
         aisql_daily_sql = f"""
         SELECT DATE(USAGE_TIME) AS USAGE_DATE, FUNCTION_NAME, ROUND(SUM(TOKEN_CREDITS), 4) AS CREDITS
         FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_AISQL_USAGE_HISTORY
-        WHERE USAGE_TIME >= {date_filter}
+        WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end}
         GROUP BY 1, 2 ORDER BY 1
         """
         st.subheader("Daily Trend")
@@ -466,7 +475,7 @@ with tabs[3]:
         ROUND(SUM(CREDITS) / NULLIF(SUM(REQUEST_COUNT), 0), 6) AS AVG_CREDIT_PER_REQUEST,
         COUNT(DISTINCT DATE(START_TIME)) AS ACTIVE_DAYS
     FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_ANALYST_USAGE_HISTORY
-    WHERE START_TIME >= {date_filter}
+    WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
     GROUP BY USERNAME
     ORDER BY CREDITS DESC
     """
@@ -496,7 +505,7 @@ with tabs[3]:
             analyst_daily_sql = f"""
             SELECT DATE(START_TIME) AS USAGE_DATE, ROUND(SUM(CREDITS), 4) AS CREDITS, SUM(REQUEST_COUNT) AS REQUESTS
             FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_ANALYST_USAGE_HISTORY
-            WHERE START_TIME >= {date_filter}
+            WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
             GROUP BY 1 ORDER BY 1
             """
             st.subheader("Daily Trend")
@@ -525,7 +534,7 @@ with tabs[4]:
         CONSUMPTION_TYPE,
         ROUND(SUM(CREDITS), 4) AS CREDITS
     FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_SEARCH_DAILY_USAGE_HISTORY
-    WHERE USAGE_DATE >= {date_filter}
+    WHERE USAGE_DATE >= {date_filter} AND USAGE_DATE <= {date_filter_end}
     GROUP BY SERVICE_NAME, DATABASE_NAME, SCHEMA_NAME, CONSUMPTION_TYPE
     ORDER BY CREDITS DESC
     """
@@ -538,7 +547,7 @@ with tabs[4]:
         SCHEMA_NAME,
         ROUND(SUM(CREDITS), 4) AS CREDITS
     FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_SEARCH_SERVING_USAGE_HISTORY
-    WHERE START_TIME >= {date_filter}
+    WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
     GROUP BY SERVICE_NAME, DATABASE_NAME, SCHEMA_NAME
     ORDER BY CREDITS DESC
     """
@@ -578,7 +587,7 @@ with tabs[4]:
             search_daily_sql = f"""
             SELECT USAGE_DATE, SERVICE_NAME, ROUND(SUM(CREDITS), 4) AS CREDITS
             FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_SEARCH_DAILY_USAGE_HISTORY
-            WHERE USAGE_DATE >= {date_filter}
+            WHERE USAGE_DATE >= {date_filter} AND USAGE_DATE <= {date_filter_end}
             GROUP BY 1, 2 ORDER BY 1
             """
             st.subheader("Daily Search Trend")
@@ -605,7 +614,7 @@ with tabs[5]:
         SUM(TOKENS) AS TOTAL_TOKENS,
         COUNT(DISTINCT REQUEST_ID) AS REQUESTS
     FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_CODE_CLI_USAGE_HISTORY
-    WHERE USAGE_TIME >= {date_filter}
+    WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end}
     GROUP BY USER_ID
     ORDER BY CREDITS DESC
     """
@@ -636,7 +645,7 @@ with tabs[5]:
             code_daily_sql = f"""
             SELECT DATE(USAGE_TIME) AS USAGE_DATE, ROUND(SUM(TOKEN_CREDITS), 4) AS CREDITS, SUM(TOKENS) AS TOTAL_TOKENS
             FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_CODE_CLI_USAGE_HISTORY
-            WHERE USAGE_TIME >= {date_filter}
+            WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end}
             GROUP BY 1 ORDER BY 1
             """
             st.subheader("Daily Trend")
@@ -666,7 +675,7 @@ with tabs[6]:
         SUM(TOKENS) AS TOTAL_TOKENS,
         COUNT(DISTINCT REQUEST_ID) AS REQUESTS
     FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_AGENT_USAGE_HISTORY
-    WHERE START_TIME >= {date_filter}
+    WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
     GROUP BY 1, 2, 3, 4
     ORDER BY CREDITS DESC
     """
@@ -707,7 +716,7 @@ with tabs[6]:
         SELECT DATE(START_TIME) AS USAGE_DATE, COALESCE(USER_NAME, CAST(USER_ID AS VARCHAR)) AS USER_DISPLAY,
             ROUND(SUM(TOKEN_CREDITS), 4) AS CREDITS
         FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_AGENT_USAGE_HISTORY
-        WHERE START_TIME >= {date_filter}
+        WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
         GROUP BY 1, 2 ORDER BY 1
         """
         st.subheader("Daily Trend")
@@ -737,7 +746,7 @@ with tabs[7]:
         SUM(TOKENS) AS TOTAL_TOKENS,
         COUNT(DISTINCT REQUEST_ID) AS REQUESTS
     FROM SNOWFLAKE.ACCOUNT_USAGE.SNOWFLAKE_INTELLIGENCE_USAGE_HISTORY
-    WHERE START_TIME >= {date_filter}
+    WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
     GROUP BY 1, 2, 3, 4
     ORDER BY CREDITS DESC
     """
@@ -776,7 +785,7 @@ with tabs[7]:
         intel_daily_sql = f"""
         SELECT DATE(START_TIME) AS USAGE_DATE, ROUND(SUM(TOKEN_CREDITS), 4) AS CREDITS, SUM(TOKENS) AS TOTAL_TOKENS
         FROM SNOWFLAKE.ACCOUNT_USAGE.SNOWFLAKE_INTELLIGENCE_USAGE_HISTORY
-        WHERE START_TIME >= {date_filter}
+        WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
         GROUP BY 1 ORDER BY 1
         """
         st.subheader("Daily Trend")
@@ -804,7 +813,7 @@ with tabs[8]:
         SUM(DOCUMENT_COUNT) AS TOTAL_DOCUMENTS,
         COUNT(*) AS OPERATIONS
     FROM SNOWFLAKE.ACCOUNT_USAGE.DOCUMENT_AI_USAGE_HISTORY
-    WHERE START_TIME >= {date_filter}
+    WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
     GROUP BY OPERATION_NAME
     ORDER BY CREDITS DESC
     """
@@ -821,7 +830,7 @@ with tabs[8]:
         docai_daily_sql = f"""
         SELECT DATE(START_TIME) AS USAGE_DATE, ROUND(SUM(CREDITS_USED), 4) AS CREDITS
         FROM SNOWFLAKE.ACCOUNT_USAGE.DOCUMENT_AI_USAGE_HISTORY
-        WHERE START_TIME >= {date_filter}
+        WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
         GROUP BY 1 ORDER BY 1
         """
         st.subheader("Daily Trend")

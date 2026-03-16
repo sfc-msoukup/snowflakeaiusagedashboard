@@ -210,8 +210,9 @@ The sidebar provides a time period selector with the following options:
 - Last 90 Days
 - Last 180 Days
 - Last Year
+- Custom — Select a custom "From" and "To" date using date pickers
 
-All queries filter data using `DATEADD(DAY, -N, CURRENT_DATE())`.
+Preset periods filter data using `DATEADD(DAY, -N, CURRENT_DATE())`. The Custom option uses explicit start and end dates, allowing you to analyze any arbitrary date range.
 
 ### Warehouse
 
