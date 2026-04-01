@@ -95,7 +95,7 @@ def get_session():
     try:
         return get_active_session()
     except Exception:
-        return Session.builder.configs({"connection_name": "MSOUKUP_AWS1"}).create()
+        return Session.builder.configs({"connection_name": "<USER_CONNECTION_NAME>"}).create()
 
 
 session = get_session()
