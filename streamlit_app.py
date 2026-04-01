@@ -95,7 +95,7 @@ def get_session():
     try:
         return get_active_session()
     except Exception:
-        return Session.builder.configs({"connection_name": "<USER_CONNECTION_NAME>"}).create()
+        return Session.builder.configs({"connection_name": "MSOUKUP_AWS1"}).create()
 
 
 session = get_session()
@@ -186,7 +186,7 @@ with st.sidebar:
     else:
         days = days_map[date_range]
         date_filter = f"DATEADD(DAY, -{days}, CURRENT_DATE())"
-        date_filter_end = "CURRENT_DATE()"
+        date_filter_end = "CURRENT_TIMESTAMP()"
 
     st.markdown("---")
     st.caption("Data from SNOWFLAKE.ACCOUNT_USAGE")
