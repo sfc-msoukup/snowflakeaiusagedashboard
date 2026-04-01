@@ -1,6 +1,7 @@
 import streamlit as st
 import altair as alt
 import pandas as pd
+from snowflake.snowpark import Session
 from snowflake.snowpark.context import get_active_session
 
 st.set_page_config(
@@ -90,7 +91,14 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-session = get_active_session()
+def get_session():
+    try:
+        return get_active_session()
+    except Exception:
+        return Session.builder.configs({"connection_name": "MSOUKUP_AWS1"}).create()
+
+
+session = get_session()
 
 
 @st.cache_data(ttl=600)
@@ -178,7 +186,7 @@ with st.sidebar:
     else:
         days = days_map[date_range]
         date_filter = f"DATEADD(DAY, -{days}, CURRENT_DATE())"
-        date_filter_end = "CURRENT_DATE()"
+        date_filter_end = "CURRENT_TIMESTAMP()"
 
     st.markdown("---")
     st.caption("Data from SNOWFLAKE.ACCOUNT_USAGE")
@@ -207,8 +215,12 @@ SELECT 'Cortex Search (Serving)', ROUND(SUM(CREDITS), 4)
 FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_SEARCH_SERVING_USAGE_HISTORY
 WHERE START_TIME >= {date_filter} AND START_TIME <= {date_filter_end}
 UNION ALL
-SELECT 'Cortex Code', ROUND(SUM(TOKEN_CREDITS), 4)
+SELECT 'Cortex Code CLI', ROUND(SUM(TOKEN_CREDITS), 4)
 FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_CODE_CLI_USAGE_HISTORY
+WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end}
+UNION ALL
+SELECT 'Cortex Code UI', ROUND(SUM(TOKEN_CREDITS), 4)
+FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_CODE_SNOWSIGHT_USAGE_HISTORY
 WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end}
 UNION ALL
 SELECT 'Cortex Agent', ROUND(SUM(TOKEN_CREDITS), 4)
@@ -230,7 +242,8 @@ tabs = st.tabs([
     "AI SQL Functions",
     "Cortex Analyst",
     "Cortex Search",
-    "Cortex Code",
+    "Cortex Code CLI",
+    "Cortex Code UI",
     "Cortex Agent",
     "Snowflake Intelligence",
     "Document AI",
@@ -297,8 +310,12 @@ with tabs[0]:
         FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_SEARCH_DAILY_USAGE_HISTORY
         WHERE USAGE_DATE >= {date_filter} AND USAGE_DATE <= {date_filter_end} GROUP BY 1
         UNION ALL
-        SELECT DATE(USAGE_TIME), 'Cortex Code', ROUND(SUM(TOKEN_CREDITS), 4)
+        SELECT DATE(USAGE_TIME), 'Cortex Code CLI', ROUND(SUM(TOKEN_CREDITS), 4)
         FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_CODE_CLI_USAGE_HISTORY
+        WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end} GROUP BY 1
+        UNION ALL
+        SELECT DATE(USAGE_TIME), 'Cortex Code UI', ROUND(SUM(TOKEN_CREDITS), 4)
+        FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_CODE_SNOWSIGHT_USAGE_HISTORY
         WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end} GROUP BY 1
         UNION ALL
         SELECT DATE(START_TIME), 'Cortex Agent', ROUND(SUM(TOKEN_CREDITS), 4)
@@ -601,10 +618,10 @@ with tabs[4]:
         st.info("No Cortex Search usage found for the selected period.")
 
 # ============================
-# TAB: Cortex Code
+# TAB: Cortex Code CLI
 # ============================
 with tabs[5]:
-    st.header("Cortex Code")
+    st.header("Cortex Code CLI")
     st.caption("Cortex Code CLI (AI-powered coding assistant) usage.")
 
     code_sql = f"""
@@ -656,12 +673,89 @@ with tabs[5]:
         st.subheader("User Breakdown")
         st.dataframe(df_code.reset_index(drop=True))
     else:
-        st.info("No Cortex Code usage found for the selected period.")
+        st.info("No Cortex Code CLI usage found for the selected period.")
+
+# ============================
+# TAB: Cortex Code UI
+# ============================
+with tabs[6]:
+    st.header("Cortex Code UI")
+    st.caption("Cortex Code Snowsight (AI-powered coding assistant in the Snowflake UI) usage.")
+
+    code_ui_sql = f"""
+    SELECT
+        USER_ID,
+        ROUND(SUM(TOKEN_CREDITS), 4) AS CREDITS,
+        SUM(TOKENS) AS TOTAL_TOKENS,
+        COUNT(DISTINCT REQUEST_ID) AS REQUESTS
+    FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_CODE_SNOWSIGHT_USAGE_HISTORY
+    WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end}
+    GROUP BY USER_ID
+    ORDER BY CREDITS DESC
+    """
+    df_code_ui = safe_query(code_ui_sql)
+    if not df_code_ui.empty:
+        total_creds = df_code_ui["CREDITS"].sum()
+        total_tokens = df_code_ui["TOTAL_TOKENS"].sum()
+        total_reqs = df_code_ui["REQUESTS"].sum()
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Total Credits", format_credits(total_creds))
+        k2.metric("Total Tokens", f"{total_tokens:,.0f}")
+        k3.metric("Total Requests", f"{total_reqs:,.0f}")
+        k4.metric("Active Users", str(len(df_code_ui)))
+
+        df_code_ui["USER_ID"] = df_code_ui["USER_ID"].astype(str)
+
+        code_ui_daily_sql = f"""
+        SELECT DATE(USAGE_TIME) AS USAGE_DATE, ROUND(SUM(TOKEN_CREDITS), 4) AS CREDITS, SUM(TOKENS) AS TOTAL_TOKENS
+        FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_CODE_SNOWSIGHT_USAGE_HISTORY
+        WHERE USAGE_TIME >= {date_filter} AND USAGE_TIME <= {date_filter_end}
+        GROUP BY 1 ORDER BY 1
+        """
+        df_code_ui_daily = safe_query(code_ui_daily_sql)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Credits by User")
+            chart = alt.Chart(df_code_ui).mark_bar(cornerRadiusEnd=4).encode(
+                x=alt.X("CREDITS:Q", title="Credits"),
+                y=alt.Y("USER_ID:N", title="User ID", sort="-x"),
+                color=alt.Color("USER_ID:N", legend=None, scale=alt.Scale(range=SNOWFLAKE_PALETTE)),
+                tooltip=[alt.Tooltip("USER_ID:N"), alt.Tooltip("CREDITS:Q", format=",.4f"), alt.Tooltip("TOTAL_TOKENS:Q", title="Tokens")],
+            )
+            st.altair_chart(chart, use_container_width=True)
+
+        with col2:
+            st.subheader("Credit Daily Trend")
+            if not df_code_ui_daily.empty:
+                render_daily_chart(df_code_ui_daily, "USAGE_DATE", "CREDITS")
+
+        col3, col4 = st.columns(2)
+        with col3:
+            st.subheader("Tokens by User")
+            df_code_ui_tokens = df_code_ui.sort_values("TOTAL_TOKENS", ascending=True)
+            chart = alt.Chart(df_code_ui_tokens).mark_bar(cornerRadiusEnd=4).encode(
+                x=alt.X("TOTAL_TOKENS:Q", title="Tokens"),
+                y=alt.Y("USER_ID:N", title="User ID", sort="-x"),
+                color=alt.Color("USER_ID:N", legend=None, scale=alt.Scale(range=SNOWFLAKE_PALETTE)),
+                tooltip=[alt.Tooltip("USER_ID:N"), alt.Tooltip("TOTAL_TOKENS:Q", title="Tokens", format=",.0f"), alt.Tooltip("CREDITS:Q", format=",.4f")],
+            )
+            st.altair_chart(chart, use_container_width=True)
+
+        with col4:
+            st.subheader("Token Daily Trend")
+            if not df_code_ui_daily.empty:
+                render_daily_chart(df_code_ui_daily, "USAGE_DATE", "TOTAL_TOKENS")
+
+        st.subheader("User Breakdown")
+        st.dataframe(df_code_ui.reset_index(drop=True))
+    else:
+        st.info("No Cortex Code UI usage found for the selected period.")
 
 # ============================
 # TAB: Cortex Agent
 # ============================
-with tabs[6]:
+with tabs[7]:
     st.header("Cortex Agent")
     st.caption("Cortex Agent API usage for building agentic applications.")
 
@@ -732,7 +826,7 @@ with tabs[6]:
 # ============================
 # TAB: Snowflake Intelligence
 # ============================
-with tabs[7]:
+with tabs[8]:
     st.header("Snowflake Intelligence")
     st.caption("Snowflake Intelligence (AI-powered analytics assistant) usage.")
 
@@ -801,7 +895,7 @@ with tabs[7]:
 # ============================
 # TAB: Document AI
 # ============================
-with tabs[8]:
+with tabs[9]:
     st.header("Document AI")
     st.caption("Document AI usage for extracting structured data from documents.")
 

@@ -110,7 +110,27 @@ Cortex Code CLI (AI-powered coding assistant) usage.
 
 **Source:** `SNOWFLAKE.ACCOUNT_USAGE.CORTEX_CODE_CLI_USAGE_HISTORY`
 
-### 7. Cortex Agent
+### 7. Cortex Code UI
+
+Cortex Code Snowsight (AI-powered coding assistant in the Snowflake UI) usage.
+
+| Metric | Description |
+|--------|-------------|
+| Total Credits | Token credits consumed |
+| Total Tokens | Total tokens processed |
+| Total Requests | Count of distinct requests |
+| Active Users | Count of distinct users |
+
+**Visualizations:**
+- Credits by User (bar chart)
+- Credit Daily Trend (area chart)
+- Tokens by User (bar chart)
+- Token Daily Trend (area chart)
+- User Breakdown table
+
+**Source:** `SNOWFLAKE.ACCOUNT_USAGE.CORTEX_CODE_SNOWSIGHT_USAGE_HISTORY`
+
+### 8. Cortex Agent
 
 Cortex Agent API usage for building agentic applications.
 
@@ -129,7 +149,7 @@ Cortex Agent API usage for building agentic applications.
 
 **Source:** `SNOWFLAKE.ACCOUNT_USAGE.CORTEX_AGENT_USAGE_HISTORY`
 
-### 8. Snowflake Intelligence
+### 9. Snowflake Intelligence
 
 Snowflake Intelligence (AI-powered analytics assistant) usage.
 
@@ -147,7 +167,7 @@ Snowflake Intelligence (AI-powered analytics assistant) usage.
 
 **Source:** `SNOWFLAKE.ACCOUNT_USAGE.SNOWFLAKE_INTELLIGENCE_USAGE_HISTORY`
 
-### 9. Document AI
+### 10. Document AI
 
 Document AI usage for extracting structured data from documents.
 
@@ -303,7 +323,8 @@ CREATE OR REPLACE STREAMLIT SNOWFLAKE_AI_USAGE_DASHBOARD.PUBLIC.SNOWFLAKE_AI_USA
 | `CORTEX_ANALYST_USAGE_HISTORY` | Overview, Cortex Analyst |
 | `CORTEX_SEARCH_DAILY_USAGE_HISTORY` | Overview, Cortex Search |
 | `CORTEX_SEARCH_SERVING_USAGE_HISTORY` | Overview, Cortex Search |
-| `CORTEX_CODE_CLI_USAGE_HISTORY` | Overview, Cortex Code |
+| `CORTEX_CODE_CLI_USAGE_HISTORY` | Overview, Cortex Code CLI |
+| `CORTEX_CODE_SNOWSIGHT_USAGE_HISTORY` | Overview, Cortex Code UI |
 | `CORTEX_AGENT_USAGE_HISTORY` | Overview, Cortex Agent |
 | `SNOWFLAKE_INTELLIGENCE_USAGE_HISTORY` | Overview, Snowflake Intelligence |
 | `DOCUMENT_AI_USAGE_HISTORY` | Overview, Document AI |
