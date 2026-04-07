@@ -325,9 +325,10 @@ CREATE OR REPLACE STREAMLIT SNOWFLAKE_AI_USAGE_DASHBOARD.PUBLIC.SNOWFLAKE_AI_USA
 | `CORTEX_SEARCH_SERVING_USAGE_HISTORY` | Overview, Cortex Search |
 | `CORTEX_CODE_CLI_USAGE_HISTORY` | Overview, Cortex Code CLI |
 | `CORTEX_CODE_SNOWSIGHT_USAGE_HISTORY` | Overview, Cortex Code UI |
+| `CORTEX_CODE_SNOWSIGHT_USAGE_HISTORY` | Overview, Cortex Code UI |
 | `CORTEX_AGENT_USAGE_HISTORY` | Overview, Cortex Agent |
 | `SNOWFLAKE_INTELLIGENCE_USAGE_HISTORY` | Overview, Snowflake Intelligence |
-| `DOCUMENT_AI_USAGE_HISTORY` | Overview, Document AI |
+| `DOCUMENT_AI_USAGE_HISTORY` (deprecated functionality)| Overview, Document AI |
 
 ---
 
